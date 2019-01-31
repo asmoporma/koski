@@ -144,4 +144,18 @@ class RaportointiDatabase(val config: Config) extends Logging with KoskiDatabase
         sisältyvätOpiskeluoikeudet.getOrElse(t._1.opiskeluoikeusOid, Seq.empty).sortBy(_.opiskeluoikeusOid)
       ))
   }
+
+  def tutkintotiedotAikaJaksolta(koulutusmuodot: Set[String], alku: LocalDate, loppu: LocalDate): Seq[((ROpiskeluoikeusRow, ROpiskeluoikeusAikajaksoRow), RHenkilöRow)] = {
+    val alkuDate = Date.valueOf(alku)
+    val loppuDate = Date.valueOf(loppu)
+    val query= ROpiskeluoikeudet
+      .filter(_.koulutusmuoto inSet(koulutusmuodot))
+      .join(ROpiskeluoikeusAikajaksot.filter(_.alku >= alkuDate).filter(_.loppu <= loppuDate))
+      .on(_.opiskeluoikeusOid === _.opiskeluoikeusOid)
+      .join(RHenkilöt)
+      .on(_._1.oppijaOid === _.oppijaOid)
+      .sortBy(_._1._1.opiskeluoikeusOid)
+
+    runDbSync(query.result, timeout = 10.minutes)
+  }
 }
